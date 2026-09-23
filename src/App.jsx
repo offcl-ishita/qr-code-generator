@@ -148,11 +148,9 @@ export default function App() {
         {/* Header */}
         <header className="flex justify-between items-center mb-8">
           <div>
-          <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">MAQER</h1>
+            <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">MAQER</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">THE QR CODE GENERATOR</p>
           </div>
-  {/* ... theme toggle button stays the same ... */}
-</header>
           <button 
             onClick={toggleTheme}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
