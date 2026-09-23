@@ -8,7 +8,7 @@
 [![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-[Live Demo](https://your-vercel-deployment-link.vercel.app) • [Report Bug](#) • [Request Feature](#)
+[Live Demo](https://maqer-qr.vercel.app/) • [Report Bug](#) • [Request Feature](#)
 
 </div>
 
