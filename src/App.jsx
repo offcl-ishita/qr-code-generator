@@ -20,7 +20,7 @@ export default function App() {
     bgColor: '#ffffff',
     level: 'Q', // Error correction: L (Low), M (Medium), Q (Quartile), H (High)
     margin: 4,
-    includeMargin: true
+    includeMargin: true,
     useGradient: false,
     gradientColor: '#3b82f6'
   });
