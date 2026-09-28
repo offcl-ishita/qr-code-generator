@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Moon, Sun, Download, History, AlertTriangle, Wifi, Type, Link as LinkIcon, Mail, Phone, Settings2, Palette } from 'lucide-react';
 import { getContrastWarning } from './utils/qrHelpers';
 import QRInputs from './components/QRInputs';
@@ -21,6 +21,8 @@ export default function App() {
     level: 'Q', // Error correction: L (Low), M (Medium), Q (Quartile), H (High)
     margin: 4,
     includeMargin: true
+    useGradient: false,
+    gradientColor: '#3b82f6'
   });
   
   const [errors, setErrors] = useState({});
@@ -99,18 +101,39 @@ export default function App() {
   const handleDownload = () => {
     if (!payload || Object.keys(errors).length > 0) return;
     
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (!canvas) return;
+    const svgElement = qrRef.current?.querySelector('svg');
+    if (!svgElement) return;
 
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qrcode-${qrType}-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // 1. Get the SVG XML code
+    let svgData = new XMLSerializer().serializeToString(svgElement);
 
-    saveToRecent();
+    // 2. If gradient is on, inject the gradient code into the downloaded SVG
+    if (qrConfig.useGradient) {
+      const defs = `<defs><linearGradient id="qr-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${qrConfig.fgColor}" /><stop offset="100%" stop-color="${qrConfig.gradientColor}" /></linearGradient></defs>`;
+      svgData = svgData.replace(/<svg[^>]*>/, match => match + defs);
+    }
+
+    // 3. Convert the SVG to a PNG using a hidden canvas
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    canvas.width = qrConfig.size;
+    canvas.height = qrConfig.size;
+
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, qrConfig.size, qrConfig.size);
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `MAQER-${qrType}-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      saveToRecent();
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
   const saveToRecent = () => {
@@ -209,22 +232,33 @@ export default function App() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Colors */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Foreground Color</label>
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="color" 
-                        value={qrConfig.fgColor}
-                        onChange={(e) => handleConfigChange('fgColor', e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                      />
-                      <input 
-                        type="text" 
-                        value={qrConfig.fgColor}
-                        onChange={(e) => handleConfigChange('fgColor', e.target.value)}
-                        className="flex-1 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none"
-                      />
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium">Foreground</label>
+                      <label className="flex items-center text-xs cursor-pointer text-blue-600 dark:text-blue-400 font-medium">
+                        <input 
+                          type="checkbox" 
+                          checked={qrConfig.useGradient}
+                          onChange={(e) => handleConfigChange('useGradient', e.target.checked)}
+                          className="mr-1.5 rounded border-gray-300"
+                        />
+                        Gradient
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {/* Color 1 */}
+                      <input type="color" value={qrConfig.fgColor} onChange={(e) => handleConfigChange('fgColor', e.target.value)} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent shrink-0" />
+                      <input type="text" value={qrConfig.fgColor} onChange={(e) => handleConfigChange('fgColor', e.target.value)} className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none text-sm" />
+                      
+                      {/* Color 2 (Only shows if Gradient is checked) */}
+                      {qrConfig.useGradient && (
+                        <>
+                          <span className="text-gray-400 text-sm">to</span>
+                          <input type="color" value={qrConfig.gradientColor} onChange={(e) => handleConfigChange('gradientColor', e.target.value)} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent shrink-0" />
+                          <input type="text" value={qrConfig.gradientColor} onChange={(e) => handleConfigChange('gradientColor', e.target.value)} className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none text-sm" />
+                        </>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -284,14 +318,26 @@ export default function App() {
               <h2 className="text-lg font-semibold w-full mb-6">Live Preview</h2>
               
               <div 
-                className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 mb-6 flex justify-center items-center overflow-hidden w-full max-w-[300px] aspect-square"
+                className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 mb-6 flex justify-center items-center overflow-hidden w-full max-w-[300px] aspect-square relative"
                 ref={qrRef}
               >
+                {/* Hidden SVG for DOM Gradient Reference */}
+                {qrConfig.useGradient && (
+                  <svg style={{ height: 0, width: 0, position: 'absolute' }}>
+                    <defs>
+                      <linearGradient id="qr-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={qrConfig.fgColor} />
+                        <stop offset="100%" stopColor={qrConfig.gradientColor} />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                )}
+
                 {payload ? (
-                  <QRCodeCanvas
+                  <QRCodeSVG
                     value={payload}
-                    size={qrConfig.size > 250 ? 250 : qrConfig.size} // Scale down visually so it doesn't break UI layout
-                    fgColor={qrConfig.fgColor}
+                    size={qrConfig.size > 250 ? 250 : qrConfig.size}
+                    fgColor={qrConfig.useGradient ? "url(#qr-grad)" : qrConfig.fgColor}
                     bgColor={qrConfig.bgColor}
                     level={qrConfig.level}
                     includeMargin={qrConfig.includeMargin}
